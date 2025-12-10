@@ -376,20 +376,20 @@ void Class_Gimbal::TIM_Calculate_PeriodElapsedCallback()
     control_angle[2] = Motor_DM_J2_Pitch_2.Get_Now_Angle();
     control_angle[3] = Motor_DM_J3_Roll.Get_Now_Angle();
     control_angle[4] = Motor_DM_J4_Pitch_3.Get_Now_Angle();
-    control_angle[5] = multi_to_single(Motor_6020_J5_Roll_2.Get_Now_Radian());
+    control_angle[5] = Arm_Model.multi_to_single(Motor_6020_J5_Roll_2.Get_Now_Radian());
 
-    motor_to_model(control_angle, model_angle, roll_cali_offset);
+    Arm_Model.motor_to_model(control_angle, model_angle, roll_cali_offset);
     for(int i = 0; i <6; i++)
     {
         model_degree[i] = model_angle[i] * 180.0f / PI;
     }
-    show_FK_result(model_angle, xyz_rpy);
-    model_to_control(model_result, control_result);
+    Arm_Model.show_FK_result(model_angle, xyz_rpy);
+    Arm_Model.model_to_control(model_result, control_result);
     // 采用解析法求IK
     //DWT_GetDeltaT(&dwt_cnt);
-    //ikine_pieper_solutions(target_pos, target_rpy, &solutions[0]);
+    //Arm_Model.ikine_pieper_solutions(target_pos, target_rpy, &solutions[0]);
     //delta_time = DWT_GetDeltaT(&dwt_cnt);
-    //valid_IK_cnt = solution_filter(&solutions[0], valid_solution);
+    //valid_IK_cnt = Arm_Model.solution_filter(&solutions[0], valid_solution);
 }
 
 /**

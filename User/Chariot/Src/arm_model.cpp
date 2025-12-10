@@ -20,12 +20,23 @@
 using namespace robotics;
 using namespace matrixf;
 
+Class_Arm_Model Arm_Model;
+
 /*----------------------variables-----------------------*/
-Link links[6];
-float qmin[6] = {-2.883f, -0.926f, 0.15f, -3.028f, -1.336f, -PI};
-float qmax[6] = {2.883f, 0.926f, 2.133f, 3.028f, 1.336f, PI};
-float now_motor_angles[6];
-Serial_Link<6> robot = CreateMyRobot();
+
+Class_Arm_Model::Class_Arm_Model()
+{
+    float qmin_init[6] = {-2.883f, -0.926f, 0.15f, -3.028f, -1.336f, -PI};
+    float qmax_init[6] = {2.883f, 0.926f, 2.133f, 3.028f, 1.336f, PI};
+
+    for(int i=0; i<6; i++) {
+        qmin[i] = qmin_init[i];
+        qmax[i] = qmax_init[i];
+    }
+
+    robot = CreateMyRobot();
+}
+
 
 // =========================================================
 // 1. 定义机械臂模型 (基于 DH 参数)
@@ -34,7 +45,7 @@ Serial_Link<6> robot = CreateMyRobot();
 // 构型: Yaw - Pitch - Pitch - Roll - Pitch - Roll
 // 数据: d1=8, a2=35, a3=15.1, a4=12.7, a5=11.5, d6=5.0
 
-Serial_Link<6> CreateMyRobot()
+Serial_Link<6> Class_Arm_Model::CreateMyRobot()
 {
     // (theta, d, a, alpha, type, offset, qmin, qmax)
     // --- Link 1: Yaw (Base -> J2) ---
@@ -68,7 +79,7 @@ Serial_Link<6> CreateMyRobot()
 }
 
 // 迭代法求逆运动学，纯fw，狗都不用
-bool SolveRobotIK_Iterative(float target_pos[3], float target_rpy[3], float q_result[6], float now_angle[6])
+bool Class_Arm_Model::SolveRobotIK_Iterative(float target_pos[3], float target_rpy[3], float q_result[6], float now_angle[6])
 {
     // 构建目标齐次变换矩阵 Td
     // 使用库函数 rpy2t 将欧拉角转为旋转矩阵
@@ -130,7 +141,7 @@ bool SolveRobotIK_Iterative(float target_pos[3], float target_rpy[3], float q_re
     return true;
 }
 
-void model_to_control(float model_angles[6], float control_angles[6]) // 将建模解算出的角度转成电机实际控制的角度，这里的control_angle是用来给云台类中各个关节的目标角度值赋值用的，测试角度映射时可以顺带调用
+void Class_Arm_Model::model_to_control(float model_angles[6], float control_angles[6]) // 将建模解算出的角度转成电机实际控制的角度，这里的control_angle是用来给云台类中各个关节的目标角度值赋值用的，测试角度映射时可以顺带调用
 {
     // 由于电机零点设置与建模时不同，此函数用于将模型中逆运动学得到的关节角度转换为电机控制角度
     control_angles[0] = model_angles[0] * 2.0f;              // J0-Yaw 减速比为2，零点和运动方向与控制层匹配
@@ -142,7 +153,7 @@ void model_to_control(float model_angles[6], float control_angles[6]) // 将建�
     control_angles[5] = model_angles[5];
 }
 
-void motor_to_model(float motor_angles[6], float model_angles[6], float cali_offset) // 正运动学求解和轨迹规划时会用到，这里的motor_angles使用电机实际反馈的角度
+void Class_Arm_Model::motor_to_model(float motor_angles[6], float model_angles[6], float cali_offset) // 正运动学求解和轨迹规划时会用到，这里的motor_angles使用电机实际反馈的角度
 {
     // cali_offset -> J3-Roll的校准偏移量，恒为负数
     float roll_offset = 1.514f + cali_offset; // Roll上电时的位置相对于垂直向下的角度偏移
@@ -156,7 +167,7 @@ void motor_to_model(float motor_angles[6], float model_angles[6], float cali_off
     model_angles[5] = motor_angles[5];
 }
 
-void motor_to_model(float motor_angles[6], float model_angles[6], Class_Gimbal* Gimbal)
+void Class_Arm_Model::motor_to_model(float motor_angles[6], float model_angles[6], Class_Gimbal* Gimbal)
 //重载，使用云台类中各个关节的Target_Angle作为输入，不需要校准偏移量，未测试
 {
     model_angles[0] = Gimbal->Get_Target_Yaw_Radian();           // J0-Yaw
@@ -167,7 +178,7 @@ void motor_to_model(float motor_angles[6], float model_angles[6], Class_Gimbal* 
     model_angles[5] = Gimbal->Get_Target_Roll_2_Radian_Single();
 }
 
-float* get_now_motor_angles(Class_Gimbal* Gimbal)
+float* Class_Arm_Model::get_now_motor_angles(Class_Gimbal* Gimbal)
 //返回当前的电机角度，调用Gimbal中Motor对象的Get函数
 {
     now_motor_angles[0] = Gimbal->Motor_DM_J0_Yaw.Get_Now_Angle();
@@ -181,7 +192,7 @@ float* get_now_motor_angles(Class_Gimbal* Gimbal)
 
 /*测试用函数*/
 // 测试角度映射辅助函数，将roll_2的多圈转成单圈(0~2PI)
-float multi_to_single(float radian)
+float Class_Arm_Model::multi_to_single(float radian)
 {
     float single_radian = fmod(radian, 2.0f * PI);
     if (single_radian < 0)
@@ -192,7 +203,7 @@ float multi_to_single(float radian)
     return single_radian;
 }
 
-void show_FK_result(float joint_angles[6], float xyz_rpy[6])
+void Class_Arm_Model::show_FK_result(float joint_angles[6], float xyz_rpy[6])
 {
     Matrixf<6, 1> q;
     for (int i = 0; i < 6; i++)
@@ -209,7 +220,7 @@ void show_FK_result(float joint_angles[6], float xyz_rpy[6])
     xyz_rpy[5] = t2rpy(T)[2][0]; // Roll
 }
 
-static float normalize_angle(float angle)
+float Class_Arm_Model::normalize_angle(float angle)
 {
     // 使用 user_lib.h 中的宏
     return rad_format(angle);
@@ -222,7 +233,7 @@ static float normalize_angle(float angle)
  * solutions: 输出逆解结果，最多8组解，每组6个关节角
  * return: 实际求解出的解的个数
  */
-uint8_t ikine_pieper_solutions(float pos_target[3], float rpy_target[3], Matrixf<6, 1> solutions[8])
+uint8_t Class_Arm_Model::ikine_pieper_solutions(float pos_target[3], float rpy_target[3], Matrixf<6, 1> solutions[8])
 {
     Matrixf<3, 1> rpy;
     rpy[0][0] = rpy_target[0];
@@ -435,7 +446,7 @@ uint8_t ikine_pieper_solutions(float pos_target[3], float rpy_target[3], Matrixf
     return sol_count;
 }
 
-uint8_t solution_filter(Matrixf<6, 1> solutions[8], bool valid[8])
+uint8_t Class_Arm_Model::solution_filter(Matrixf<6, 1> solutions[8], bool valid[8])
 {
     int valid_count = 0;
     for (int i = 0; i < 8; i++)
@@ -459,7 +470,7 @@ uint8_t solution_filter(Matrixf<6, 1> solutions[8], bool valid[8])
     return valid_count;
 }
 
-uint8_t get_best_solution_index(Matrixf<6, 1> solutions[8], bool valid[8], float current_angle[6])
+uint8_t Class_Arm_Model::get_best_solution_index(Matrixf<6, 1> solutions[8], bool valid[8], float current_angle[6])
 {
     float d[8] = {0.0f};    //欧式距离，等于各关节角差值平方之和再求平方根(这里略去求根这一步)
     float err[6] = {0.0f};  //各个关节的角度差值
