@@ -30,10 +30,10 @@
 //#define MY_DEBUG
 
 //底盘电机测试入口
-#define MOTOR_TEST_CHASSIS
+//#define MOTOR_TEST_CHASSIS
 
 //底盘测试入口
-//#define CHASSIS_TEST
+#define CHASSIS_TEST
 
 //功率控制相关
 #define POWER_CONTROL 1 //启用功率控制
